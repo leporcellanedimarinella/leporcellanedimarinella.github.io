@@ -233,6 +233,9 @@ td:last-child { border-right:none; }
 .highlight { background:rgba(184,150,90,0.22); border-radius:2px; padding:0.05em 0.1em; }
 
 /* ── EMPTY ── */
+.thumb { width:52px; height:52px; object-fit:cover; border:1px solid var(--border); display:block; border-radius:1px; }
+.modal-img { width:100%; max-height:340px; object-fit:contain; border:1px solid var(--border); background:var(--porcelain); }
+.td-note { max-width:160px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-size:0.75rem; color:var(--ink-soft); }
 .empty-state { padding:5rem 4rem; text-align:center; color:var(--ink-soft); }
 .empty-state .empty-icon { font-family:'Cormorant Garamond',serif; font-size:4rem; font-weight:300; color:var(--porcelain); margin-bottom:1rem; line-height:1; }
 .empty-state h3 { font-family:'Cormorant Garamond',serif; font-size:1.5rem; font-weight:400; color:var(--ink-mid); margin-bottom:0.5rem; }
@@ -373,11 +376,11 @@ td:last-child { border-right:none; }
   </div>
   <div class="filters-row">
     <div class="filter-group"><label class="filter-label">Categoria</label><select class="filter-select" id="fCategoria" onchange="applyFilters()"><option value="">Tutte</option></select></div>
-    <div class="filter-group"><label class="filter-label">Anno</label><select class="filter-select" id="fAnno" onchange="applyFilters()"><option value="">Tutti</option></select></div>
+    <div class="filter-group"><label class="filter-label">Epoca</label><select class="filter-select" id="fEpoca" onchange="applyFilters()"><option value="">Tutti</option></select></div>
     <div class="filter-group"><label class="filter-label">Colore</label><select class="filter-select" id="fColore" onchange="applyFilters()"><option value="">Tutti</option></select></div>
     <div class="filter-group"><label class="filter-label">Decoro</label><select class="filter-select" id="fDecoro" onchange="applyFilters()"><option value="">Tutti</option></select></div>
     <div class="filter-group"><label class="filter-label">Manifattura</label><select class="filter-select" id="fManifattura" onchange="applyFilters()"><option value="">Tutte</option></select></div>
-    <div class="filter-group"><label class="filter-label">Diametro (cm)</label><select class="filter-select" id="fDiametro" onchange="applyFilters()"><option value="">Tutti</option></select></div>
+    <div class="filter-group"><label class="filter-label">Diametro</label><select class="filter-select" id="fDiametro" onchange="applyFilters()"><option value="">Tutti</option></select></div>
   </div>
   <div class="results-info" id="resultsInfo"></div>
 </div>
@@ -409,12 +412,19 @@ td:last-child { border-right:none; }
 </div>
 
 <script>
+// ── HELPERS ──────────────────────────────────────────────────────────────────
+function extractDiameter(row) {
+  const desc = String(row.Descrizione || '');
+  const m = desc.match(/(\d+)\s*cm/i);
+  return m ? m[1] + 'cm' : '';
+}
+
 // ── STATE ─────────────────────────────────────────────────────────────────────
 let allData = [];
 let filteredData = [];
 let currentSort = { col: null, dir: 'asc' };
 let activeSheet = '';
-const KNOWN_COLS = ['Categoria','Codice','Descrizione','Diametro','Anno','Colore','Decoro','Manifattura'];
+const KNOWN_COLS = ['Categoria','Descrizione','Manifattura','Decoro','Epoca','Colore','Note','Immagine','Codice'];
 const STORAGE_KEY = 'porcellane_sheet_url';
 
 // ── INIT ──────────────────────────────────────────────────────────────────────
@@ -590,8 +600,8 @@ function setActiveSheet(sheet) {
 
 // ── FILTERS ───────────────────────────────────────────────────────────────────
 function populateFilters() {
-  const cols = ['Categoria','Anno','Colore','Decoro','Manifattura','Diametro'];
-  const ids  = ['fCategoria','fAnno','fColore','fDecoro','fManifattura','fDiametro'];
+  const cols = ['Categoria','Epoca','Colore','Decoro','Manifattura'];
+  const ids  = ['fCategoria','fEpoca','fColore','fDecoro','fManifattura'];
   cols.forEach((col, i) => {
     const sel = document.getElementById(ids[i]);
     const saved = sel.value;
@@ -599,12 +609,18 @@ function populateFilters() {
     sel.innerHTML = `<option value="">— Tutti —</option>` + vals.map(v=>`<option value="${v}">${v}</option>`).join('');
     if (saved) sel.value = saved;
   });
+  // Diametro: extracted from Descrizione
+  const dSel = document.getElementById('fDiametro');
+  const dSaved = dSel.value;
+  const dVals = [...new Set(allData.map(r => extractDiameter(r)).filter(v => v !== ''))].sort((a,b) => parseInt(a)-parseInt(b));
+  dSel.innerHTML = '<option value="">— Tutti —</option>' + dVals.map(v => '<option value="' + v + '">' + v + '</option>').join('');
+  if (dSaved) dSel.value = dSaved;
 }
 
 function applyFilters() {
   const q   = document.getElementById('searchInput').value.toLowerCase().trim();
   const cat = document.getElementById('fCategoria').value;
-  const ann = document.getElementById('fAnno').value;
+  const epo = document.getElementById('fEpoca').value;
   const col = document.getElementById('fColore').value;
   const dec = document.getElementById('fDecoro').value;
   const man = document.getElementById('fManifattura').value;
@@ -613,11 +629,11 @@ function applyFilters() {
   filteredData = allData.filter(row => {
     if (activeSheet && String(row.Categoria) !== activeSheet) return false;
     if (cat && String(row.Categoria) !== cat) return false;
-    if (ann && String(row.Anno) !== ann) return false;
+    if (epo && String(row.Epoca) !== epo) return false;
     if (col && String(row.Colore) !== col) return false;
     if (dec && String(row.Decoro) !== dec) return false;
     if (man && String(row.Manifattura) !== man) return false;
-    if (dia && String(row.Diametro) !== dia) return false;
+    if (dia && extractDiameter(row) !== dia) return false;
     if (q) { if (!Object.values(row).join(' ').toLowerCase().includes(q)) return false; }
     return true;
   });
@@ -684,6 +700,8 @@ function renderTable(data) {
         if (col==='Codice') return `<td class="td-code">${display}</td>`;
         if (col==='Categoria') return `<td><span class="cat-badge">${display}</span></td>`;
         if (col==='Descrizione') return `<td class="td-desc" title="${escHtml(str)}">${display}</td>`;
+        if (col==='Immagine') return str ? `<td><img src="${escHtml(str)}" class="thumb" onerror="this.style.display='none'" alt=""></td>` : `<td></td>`;
+        if (col==='Note') return `<td class="td-note">${display}</td>`;
         return `<td>${display}</td>`;
       }).join('');
       return `<tr onclick="openModal(${idx})">${cells}</tr>`;
@@ -691,7 +709,7 @@ function renderTable(data) {
   }
 
   const info = document.getElementById('resultsInfo');
-  const hasFilter = q || ['fCategoria','fAnno','fColore','fDecoro','fManifattura','fDiametro'].some(id=>document.getElementById(id).value);
+  const hasFilter = q || ['fCategoria','fEpoca','fColore','fDecoro','fManifattura','fDiametro'].some(id=>document.getElementById(id).value);
   info.innerHTML = allData.length > 0
     ? `<span class="dot"></span> ${data.length} risultat${data.length===1?'o':'i'}${hasFilter?' su '+allData.length+' pezzi':' pezzi totali'}`
     : '';
@@ -709,8 +727,10 @@ function openModal(idx) {
   const cols = Object.keys(allData[0]);
   document.getElementById('modalTitle').textContent = row.Descrizione || row[cols[1]] || 'Dettaglio pezzo';
   document.getElementById('modalCode').textContent = row.Codice ? `Codice: ${row.Codice}` : '';
-  const skip = ['Codice','Descrizione'];
-  document.getElementById('modalBody').innerHTML = cols.filter(c=>!skip.includes(c)).map(col => {
+  const skip = ['Codice','Descrizione','Immagine'];
+  const imgUrl = row['Immagine'];
+  const imgHtml = imgUrl ? `<div class="modal-field full"><img src="${imgUrl}" class="modal-img" onerror="this.style.display='none'" alt="Foto"></div>` : '';
+  document.getElementById('modalBody').innerHTML = imgHtml + cols.filter(c=>!skip.includes(c)).map(col => {
     const val = row[col];
     const display = (val!==''&&val!=null) ? String(val) : null;
     return `<div class="modal-field${col==='Note'?' full':''}">
