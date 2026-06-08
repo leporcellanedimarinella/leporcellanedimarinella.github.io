@@ -722,7 +722,12 @@ function renderTable(data) {
         if (col==='Codice') return `<td class="td-code">${display}</td>`;
         if (col==='Categoria') return `<td><span class="cat-badge">${display}</span></td>`;
         if (col==='Descrizione') return `<td class="td-desc" title="${escHtml(str)}">${display}</td>`;
-        if (col==='Immagine') return str ? `<td><img src="${escHtml(imageUrl(str, row.Categoria))}" class="thumb" onerror="this.style.display='none'" alt=""></td>` : `<td></td>`;
+        if (col==='Immagine') {
+          if (!str) return '<td></td>';
+          const src = escHtml(imageUrl(str, row.Categoria));
+          const fallback = escHtml(imageUrl(str.replace(/\.jpeg$/i, '.jpg').replace(/\.jpg$/i, str.includes('.jpeg') ? '.jpg' : '.jpeg'), row.Categoria));
+          return `<td><img src="${src}" class="thumb" onerror="this.src='${fallback}';this.onerror=function(){this.style.display='none'}" alt=""></td>`;
+        }
         if (col==='Note') return `<td class="td-note">${display}</td>`;
         return `<td>${display}</td>`;
       }).join('');
@@ -750,8 +755,10 @@ function openModal(idx) {
   document.getElementById('modalTitle').textContent = row.Descrizione || row[cols[1]] || 'Dettaglio pezzo';
   document.getElementById('modalCode').textContent = row.Codice ? `Codice: ${row.Codice}` : '';
   const skip = ['Codice','Descrizione','Immagine'];
-  const imgUrl = imageUrl(row['Immagine'], row.Categoria);
-  const imgHtml = imgUrl ? `<div class="modal-field full"><img src="${imgUrl}" class="modal-img" onerror="this.style.display='none'" alt="Foto"></div>` : '';
+  const _imgFile = row['Immagine'] || '';
+  const imgUrl = imageUrl(_imgFile, row.Categoria);
+  const imgFallback = imageUrl(_imgFile.replace(/\.jpeg$/i, '.jpg').replace(/\.jpg$/i, _imgFile.includes('.jpeg') ? '.jpg' : '.jpeg'), row.Categoria);
+  const imgHtml = imgUrl ? `<div class="modal-field full"><img src="${imgUrl}" class="modal-img" onerror="this.src='${imgFallback}';this.onerror=function(){this.style.display='none'}" alt="Foto"></div>` : '';
   document.getElementById('modalBody').innerHTML = imgHtml + cols.filter(c=>!skip.includes(c)).map(col => {
     const val = row[col];
     const display = (val!==''&&val!=null) ? String(val) : null;
