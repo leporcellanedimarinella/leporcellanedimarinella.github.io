@@ -413,6 +413,14 @@ td:last-child { border-right:none; }
 
 <script>
 // ── HELPERS ──────────────────────────────────────────────────────────────────
+function driveUrl(url) {
+  if (!url) return '';
+  // Convert https://drive.google.com/file/d/ID/view?... -> https://drive.google.com/uc?export=view&id=ID
+  const m = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (m) return 'https://drive.google.com/uc?export=view&id=' + m[1];
+  return url;
+}
+
 function extractDiameter(row) {
   const desc = String(row.Descrizione || '');
   const m = desc.match(/(\d+)\s*cm/i);
@@ -583,12 +591,21 @@ function loadData(data) {
 // ── SHEET TABS ────────────────────────────────────────────────────────────────
 function renderSheetTabs(sheets) {
   const bar = document.getElementById('sheetTabsBar');
-  bar.innerHTML =
-    `<button class="sheet-tab ${activeSheet===''?'active':''}" onclick="setActiveSheet('')">Tutti <small style="opacity:.6;margin-left:.3rem">(${allData.length})</small></button>` +
-    sheets.map(s => {
-      const count = allData.filter(r => r.Categoria === s).length;
-      return `<button class="sheet-tab ${activeSheet===s?'active':''}" onclick="setActiveSheet(${JSON.stringify(s)})"><span class="sheet-dot"></span>${s} <small style="opacity:.6;margin-left:.3rem">(${count})</small></button>`;
-    }).join('');
+  // Use data-sheet attribute to avoid quoting issues with special chars in sheet names
+  const allBtn = document.createElement('button');
+  allBtn.className = 'sheet-tab' + (activeSheet === '' ? ' active' : '');
+  allBtn.innerHTML = 'Tutti <small style="opacity:.6;margin-left:.3rem">(' + allData.length + ')</small>';
+  allBtn.addEventListener('click', () => setActiveSheet(''));
+  bar.innerHTML = '';
+  bar.appendChild(allBtn);
+  sheets.forEach(s => {
+    const count = allData.filter(r => r.Categoria === s).length;
+    const btn = document.createElement('button');
+    btn.className = 'sheet-tab' + (activeSheet === s ? ' active' : '');
+    btn.innerHTML = '<span class="sheet-dot"></span>' + escHtml(s) + ' <small style="opacity:.6;margin-left:.3rem">(' + count + ')</small>';
+    btn.addEventListener('click', () => setActiveSheet(s));
+    bar.appendChild(btn);
+  });
 }
 
 function setActiveSheet(sheet) {
@@ -700,7 +717,7 @@ function renderTable(data) {
         if (col==='Codice') return `<td class="td-code">${display}</td>`;
         if (col==='Categoria') return `<td><span class="cat-badge">${display}</span></td>`;
         if (col==='Descrizione') return `<td class="td-desc" title="${escHtml(str)}">${display}</td>`;
-        if (col==='Immagine') return str ? `<td><img src="${escHtml(str)}" class="thumb" onerror="this.style.display='none'" alt=""></td>` : `<td></td>`;
+        if (col==='Immagine') return str ? `<td><img src="${escHtml(driveUrl(str))}" class="thumb" onerror="this.style.display='none'" alt=""></td>` : `<td></td>`;
         if (col==='Note') return `<td class="td-note">${display}</td>`;
         return `<td>${display}</td>`;
       }).join('');
@@ -728,7 +745,7 @@ function openModal(idx) {
   document.getElementById('modalTitle').textContent = row.Descrizione || row[cols[1]] || 'Dettaglio pezzo';
   document.getElementById('modalCode').textContent = row.Codice ? `Codice: ${row.Codice}` : '';
   const skip = ['Codice','Descrizione','Immagine'];
-  const imgUrl = row['Immagine'];
+  const imgUrl = driveUrl(row['Immagine']);
   const imgHtml = imgUrl ? `<div class="modal-field full"><img src="${imgUrl}" class="modal-img" onerror="this.style.display='none'" alt="Foto"></div>` : '';
   document.getElementById('modalBody').innerHTML = imgHtml + cols.filter(c=>!skip.includes(c)).map(col => {
     const val = row[col];
