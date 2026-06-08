@@ -415,10 +415,10 @@ td:last-child { border-right:none; }
 // ── HELPERS ──────────────────────────────────────────────────────────────────
 function driveUrl(url) {
   if (!url) return '';
-  // Convert https://drive.google.com/file/d/ID/view?... -> https://drive.google.com/uc?export=view&id=ID
-  const m = url.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
-  if (m) return 'https://drive.google.com/uc?export=view&id=' + m[1];
-  return url;
+  // If it's already a full URL, return as-is
+  if (url.startsWith('http')) return url;
+  // Otherwise treat as filename and build GitHub Pages path
+  return 'https://leporcellanedimarinella.github.io/images/piatti/' + url;
 }
 
 function extractDiameter(row) {
