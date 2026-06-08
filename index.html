@@ -413,12 +413,17 @@ td:last-child { border-right:none; }
 
 <script>
 // ── HELPERS ──────────────────────────────────────────────────────────────────
-function driveUrl(url) {
-  if (!url) return '';
-  // If it's already a full URL, return as-is
-  if (url.startsWith('http')) return url;
-  // Otherwise treat as filename and build GitHub Pages path
-  return 'https://leporcellanedimarinella.github.io/images/piatti/' + url;
+const CATEGORY_FOLDERS = {
+  'Piatti "Le Fate dei Fiori"': 'images/piattifate',
+  'Piatti': 'images/piatti',
+};
+const DEFAULT_FOLDER = 'images/piatti';
+
+function imageUrl(filename, categoria) {
+  if (!filename) return '';
+  if (filename.startsWith('http')) return filename;
+  const folder = CATEGORY_FOLDERS[categoria] || DEFAULT_FOLDER;
+  return 'https://leporcellanedimarinella.github.io/' + folder + '/' + filename;
 }
 
 function extractDiameter(row) {
@@ -717,7 +722,7 @@ function renderTable(data) {
         if (col==='Codice') return `<td class="td-code">${display}</td>`;
         if (col==='Categoria') return `<td><span class="cat-badge">${display}</span></td>`;
         if (col==='Descrizione') return `<td class="td-desc" title="${escHtml(str)}">${display}</td>`;
-        if (col==='Immagine') return str ? `<td><img src="${escHtml(driveUrl(str))}" class="thumb" onerror="this.style.display='none'" alt=""></td>` : `<td></td>`;
+        if (col==='Immagine') return str ? `<td><img src="${escHtml(imageUrl(str, row.Categoria))}" class="thumb" onerror="this.style.display='none'" alt=""></td>` : `<td></td>`;
         if (col==='Note') return `<td class="td-note">${display}</td>`;
         return `<td>${display}</td>`;
       }).join('');
@@ -745,7 +750,7 @@ function openModal(idx) {
   document.getElementById('modalTitle').textContent = row.Descrizione || row[cols[1]] || 'Dettaglio pezzo';
   document.getElementById('modalCode').textContent = row.Codice ? `Codice: ${row.Codice}` : '';
   const skip = ['Codice','Descrizione','Immagine'];
-  const imgUrl = driveUrl(row['Immagine']);
+  const imgUrl = imageUrl(row['Immagine'], row.Categoria);
   const imgHtml = imgUrl ? `<div class="modal-field full"><img src="${imgUrl}" class="modal-img" onerror="this.style.display='none'" alt="Foto"></div>` : '';
   document.getElementById('modalBody').innerHTML = imgHtml + cols.filter(c=>!skip.includes(c)).map(col => {
     const val = row[col];
